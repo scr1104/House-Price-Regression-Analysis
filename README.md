@@ -3,9 +3,9 @@
 
 This is a statistical analysis on house sale price in Toronto and Missisauga neighborhood. 
 
-1. Simple Linear Regression Analysis on smaller house price data(2020/11)
+1. Simple Linear Regression Analysis on smaller house price data (project completed in 2020/11)
 
-2. Multiple Linear Regression, final analysis (2020/12)
+2. Multiple Linear Regression, final analysis (project completed in 2020/12)
 
 
 <Data>
