@@ -1,0 +1,203 @@
+---
+title: "My Assignment 3 Title (.)"
+author: "Chaerin Song, Id 1005745302 (.)"
+date: "December 5, 2020 (.)"
+output: pdf_document
+---
+
+## I. Data Wrangling
+
+Part 1 (.)\
+
+**Brief explanation of the data**: House price data was obtained from the
+Toronto Real Estate Board (TREB) on detached houses in the city of Toronto 
+and the city of Mississauga.
+
+```{r, include= FALSE}
+library(broom)
+library(tidyverse)
+library(cowplot)
+
+# Randomizing data
+set.seed(5302)
+
+# Reading the data
+csv5302 <- read.csv("real203.csv")
+house_data5302 <- sample_n(csv5302, size = 150)
+```
+
+### Selecting random 150 cases
+These are the sorted ID's of selected 150 samples.
+```{r, echo=FALSE}
+# Sorting and selecting only the ID's to display
+ID5302 <- house_data5302[,1]
+house_data5302<- house_data5302[order(house_data5302$ID),]
+house_data5302$ID
+```
+
+### Creating a new variable
+And we hereby transformed "lotwidth" and "lotlength" predictors into a new predictor "lotsize."
+Lotsize will be representing the size of the house in square feet.
+```{r, echo=FALSE}
+# create a new variable called lotsize by multiplying lotlnegth and lotwidth.
+house_data5302 <- house_data5302 %>% 
+  mutate(lotsize = lotwidth + lotlength)
+house_data5302 <- subset(house_data5302, select = -c(lotlength, lotwidth))
+head(house_data5302)
+```
+
+### Removing a predictor and (up to 11) cases
+
+We will remove "maxsqfoot" predictor from our data since it has too many NA values. 
+
+```{r, include = FALSE}
+house_data5302 <- subset(house_data5302, select = -c(maxsqfoot))
+```
+
+
+Now, we will remove every case that has at least one N/A value, 
+which counts to be 8 observations.
+```{r, include = FALSE}
+sum(!complete.cases(house_data5302))
+house_data5302 <- na.omit(house_data5302)
+```
+
+By looking at the scatterplot for each variable combinations below , there are some noticeable cases. 
+```{r, echo = FALSE}
+numeric_data <- subset(house_data5302, select = -c(ID, location))
+pairs(numeric_data, pch = 19,  cex = 0.5, lower.panel=NULL)
+```
+By looking at the scatterplots, we can select some of the variable combinations to find out influential points.
+Below is the cook's distance of sale~lotsize, sale~list, and lotsize~bathroom models, in a respective order.\
+
+Based on the chart, there are 3 cases that stand out: 105, 91, and 133. We shall remove these points, which results in total of 11 cases removed. 
+
+```{r, echo = FALSE}
+# sale~lotsize
+sale_lotsize <- lm(house_data5302$sale ~ house_data5302$lotsize)
+head(sort(cooks.distance(sale_lotsize), decreasing = TRUE), n = 5)
+
+# sale~list
+sale_list <- lm(house_data5302$sale ~ house_data5302$list)
+head(sort(cooks.distance(sale_list), decreasing = TRUE), n = 5)
+
+# lotsize~bathroom
+lotsize_bathroom <- lm(house_data5302$lotsize ~ house_data5302$bathroom)
+head(sort(cooks.distance(lotsize_bathroom), decreasing = TRUE), n = 5)
+
+```
+```{r}
+house_data5302 <- house_data5302[-c(105, 91, 133), ]
+```
+
+
+## II. Exploratory Data Analysis
+Part 2 (.)\
+Table (.)\
+
+### Variable Classification 
+
+**Type of Variables**
+\begin{center}
+\begin{tabular}{ |c|c| } 
+ \hline
+  Variable & Type   \\ 
+ \hline
+ \hline
+ sale & continuous \\
+ 
+ list & continuous \\ 
+ 
+ bedroom & discrete \\
+
+ bathroom & discrete \\
+ 
+ parking & discrete \\
+ 
+ taxes & continuous \\
+ 
+ lotsize & continuous \\
+ 
+ location & categorical \\
+ \hline
+\end{tabular}
+\end{center}
+
+### Pairwise Correlation and Scatterplot Matrix
+
+Following matrix plot demonstrates pairwise correlation and scatterplot of two variables.
+Variables that are included are: *sale (response variable), list, bedroom, bathroom, parking, * *taxes, and lotsize. *
+
+The upper diagonal half of the panel demonstrates scatterplots of two corresponding variables, 
+and the lower half demonstrates pairwise correlation of these variables. 
+
+
+```{r, echo = FALSE}
+
+numeric_data <- subset(house_data5302, select = -c(ID, location))
+
+# Correlation panel
+panel.cor <- function(x, y){
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- round(cor(x, y, use = "complete.obs"), digits=2)
+    txt <- paste0("R = ", r)
+    cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt)
+}
+
+# Customize upper panel
+upper.panel<-function(x, y){
+  points(x,y, pch = 19)
+}
+# Create the plots
+pairs(numeric_data,
+      lower.panel = panel.cor,
+      upper.panel = upper.panel)
+
+```
+Based on the matrix above, we can tank each quantitative predictor based on their correlation coefficient with sale variable. \
+Here is the summary:
+
+**Each Quantitative Predictor for Sale Price Rank (base on R value)**
+\begin{center}
+\begin{tabular}{ |c c|c| } 
+ \hline
+  Variable & Type   \\ 
+ \hline
+ \hline
+ 1 & list & R = 0.99 \\ 
+ 
+ 2 & taxes & R = 0.74 \\
+ 
+ 3 & bathroom & R = 0.66 \\
+  
+ 4 & bedroom & R = 0.38 \\
+
+ 5 & lotsize & R = 0.37 \\
+ 
+ 6 & parking & R = 0.17 \\
+
+ \hline
+\end{tabular}
+\end{center}
+
+Based on the scatterplot matrix, sale~taxes seems like violating the homoskedasticity assumption the most. We shall check this by looking at the scale-location plot. 
+```{r, out.width="70%", message=FALSE, echo = FALSE, fig.align='center'}
+
+ST5302 = lm(house_data5302$sale ~ house_data5302$taxes)
+plot(ST5302, 3)
+```
+Since the graph is far from being horizontal, we can confirm that taxes predictor of sale price strongly violates the assumption of constant variance. 
+
+## III. Methods and Model
+
+Part 3 (.)
+
+Table (.)
+
+## IV. Discussions and Limitations
+
+Part 4 (.)
+
+Plot (.)

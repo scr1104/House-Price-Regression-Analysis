@@ -1,0 +1,341 @@
+---
+title: "Analysis on SLR Models for Sale Price of Detached Houses in the GTA (.)"
+author: "CS5302 (.)"
+date: "October 24, 2020 (.)"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+## I. Exploratory Data Analysis
+
+Part 1 (.)\
+
+**Brief explanation of the data**: House price data was obtained from the
+Toronto Real Estate Board (TREB) on detached houses in the city of Toronto 
+and the city of Mississauga.
+
+### Data distribution overview
+```{r, include= FALSE}
+library(broom)
+library(tidyverse)
+library(cowplot)
+
+# Randomizing data
+set.seed(5302)
+
+# Reading the data
+csv5302 <- read.csv("real20.csv")
+house_data5302 <- sample_n(csv5302, size = 200)
+head(house_data5302)
+```
+
+```{r, echo = FALSE, warning=FALSE, out.width="60%",fig.align='center'}
+# Density plot on sale price distribution
+ggplot(house_data5302, aes(x = sold, y = ..density..)) + 
+  geom_histogram(fill = "cornsilk", color = "grey60", binwidth = 0.1) + 
+  geom_density() + xlim(0,6) +
+  ggtitle("5302 Distribution of sale price")
+```
+```{r, echo=FALSE, include=FALSE}
+summary(house_data5302$sold)
+```
+
+The response variable (sale price) is an unimodal right skewed distribution. 
+With its mean value of 1.793 million CAD, minimum value of 0.672 million CAD, 
+and maximum value of 5.1 million CAD, the distribution is generally normal.
+There is no significant outlier, although the 5.1 million CAD data point could 
+possibly be an outlier. 
+
+
+### Removing influential points
+
+Here are the data points with the top 5 highest Cook's distances for each of 
+the sale price models, by list price and by taxes.
+
+```{r, echo = FALSE}
+# calculating Cook's distance for filtering out outliers
+ltos5302 <- lm(house_data5302$sold ~ house_data5302$list)
+ttos5302 <- lm(house_data5302$sold ~ house_data5302$taxes)
+head(sort(cooks.distance(ttos5302), decreasing = TRUE), n = 5)
+head(sort(cooks.distance(ltos5302), decreasing = TRUE), n = 5)
+```
+
+The Cook's distances for two of the above points are over 1, and their 
+Cook's distance values are significantly big compared to other points.\
+Now that we have two points, [56] and [117], to be potentially removed, we can briefly investigate 
+on these points before we actually remove them from our models. \
+\
+
+```{r, echo = FALSE}
+# Calculate the leverage of the data point [117]
+ltos_leverage5302 <- lm.influence(ltos5302)$hat
+line1 <- paste("Leverage of the 117th point in the sold~list model:", 
+               as.character(ltos_leverage5302[117]), sep=" ")
+cat(line1)
+```
+```{r, echo = FALSE}
+# Calculate the standard residual of the data point [117]
+ltos_outlier5302 <- rstandard(ltos5302)
+line2 <- paste("Standard residual of the 117th point in the sold~list model:", 
+               as.character(ltos_outlier5302[117]), sep=" ")
+cat(line2)
+```
+We usually conclude an $i^{th}$ point as a leverage point if 
+$h_{ii} < \frac{4}{n}$, where n is the total number of observations.
+Also, if the absolute value of $i^{th}$ point's Standard residual, $|r_i|$, 
+is substantially bigger than 2, we consider the point to be an outlier in the 
+y-direction. \
+So the $117^{th}$ point in the sold~list SLR model is an outlier in both the x-direction 
+and the y-direction, also called a *bad leverage point*. \
+\
+
+```{r, echo = FALSE}
+# Calculate the leverage of the data point [56]
+ttos_influential5302 <- lm.influence(ttos5302)$hat
+line3 <- paste("Leverage of the 56th point in the sold~taxes model:", 
+               as.character(ttos_influential5302[56]), sep=" ")
+cat(line3)
+```
+```{r, echo = FALSE}
+# Calculate the standard residual of the data point [56]
+ttos_outlier5302 <- rstandard(ttos5302)
+line4 <- paste("Standard residual of the 56th point in the sold~taxes model:", 
+               as.character(ttos_outlier5302[56]), sep=" ")
+cat(line4)
+```
+Similarly, because the $56^{th}$ point in the sold~taxes model has an $h_{ii}$ bigger than 
+$\frac{4}{n=200} = 0.02$ and $|r_i|$ substantially bigger than 2, this point is 
+also considered as a *bad leverage point* that should me removed. \
+\
+Now that we have shown the validity of removing these two points, we will exclude 
+them from the remaining parts of the analysis. \
+\
+
+```{r, echo = FALSE, include = FALSE}
+# making a subset of house data
+h_data5302 <- house_data5302[-c(56, 117), ]
+```
+
+### Scatterplots of the sale price 
+```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width="80%",fig.align='center'}
+# Plot two scatterplots, sale by list and by taxes of M and T neighborhood
+a<-ggplot(h_data5302, aes(x=list, y = sold,colour = location)) + geom_point()
+b<- ggplot(h_data5302, aes(x=taxes, y = sold,colour = location)) + geom_point()
+plot_grid(a, b, labels = c("5302 sale by list", 
+                               "5302 sale by taxes"))
+```
+
+### Interpretation of 3 different plots
+The first density plot shows the distribution of sale price data, which is what 
+we are interested in the most. Here, our takeaway is that the house sale price 
+in two Toronto neighborhoods is close to normally distributed, with some of 
+very high priced houses. \
+\
+Next, from the scatterplots of sale price by list price and taxes, we can 
+see the relationship between the two different factors. \
+\
+The scatterplot of sale price by list price demonstrates a positive relationship 
+between two factors, and is seemingly linear other than a couple of points. \
+Similarly, by looking at the scatterplot of sale price by taxes, the two factors 
+seem to have a positive linear relationship, although the data plots are not as 
+well aligned as the first scatterplot. 
+
+
+## II. Methods and Model
+
+Part 2 (.)
+
+### 3 Simple linear regression models of sale price by list price
+
+```{r, echo = FALSE, out.width="60%",fig.align='center', message = FALSE}
+# Regression plot of sale price by list price for all data
+sp5302 <- ggplot(h_data5302, aes(x=list, y=sold)) + 
+  ggtitle("5302 Sale price vs. List price (all data)") 
+slr5302<- sp5302+ geom_point(col="midnightblue") + 
+  stat_smooth(method=lm, se = FALSE, colour = "cadetblue3")
+slr5302
+```
+```{r, echo = FALSE, message=FALSE, fig.align='center', fig.height = 2.5, fig.width = 6}
+# makign subsets of the original data to only include a certain type of neighborhood
+h_data_T5302 <- h_data5302 %>% filter(location == "T")
+h_data_M5302 <- h_data5302 %>% filter(location == "M")
+
+# Regression plot of sale price by list price for T neiborhood
+sp_T5302 <- ggplot(h_data_T5302, aes(x=list, y=sold)) + 
+  ggtitle("5302 Sale vs. List (Toronto)") 
+slr_T5302<- sp_T5302+ geom_point(col="darkgreen") + 
+  stat_smooth(method=lm, se = FALSE, colour = "olivedrab3", size = 0.5)
+
+# Regression plot of sale price by list price for M neighborhood
+sp_M5302 <- ggplot(h_data_M5302, aes(x=list, y=sold)) + 
+  ggtitle("5302 Sale vs. List (Mississauga)") 
+slr_M5302<- sp_M5302+ geom_point(col="firebrick4") + 
+  stat_smooth(method=lm, se = FALSE, colour = "peachpuff2", size = 0.5)
+
+plot_grid(slr_T5302, slr_M5302)
+```
+
+```{r, include = FALSE, echo = FALSE}
+# fitting SLR model on each three data
+lall5302 = lm(h_data5302$sold ~ h_data5302$list)
+lT5302 = lm(h_data_T5302$sold ~ h_data_T5302$list)
+lM5302 = lm(h_data_M5302$sold ~ h_data_M5302$list)
+
+summary(lall5302)
+summary(lT5302)
+summary(lM5302)
+```
+
+```{r, echo = FALSE, include=FALSE}
+# calculating 95% CI for three models
+confint(lall5302, level = 0.95)
+confint(lT5302, level = 0.95)
+confint(lM5302, level = 0.95)
+```
+
+
+Table (.)
+
+**Results**
+
+\begin{center}
+\begin{tabular}{ |c||c|c|c| } 
+ \hline
+  & all data & T & M  \\ 
+ \hline
+ $R^2$ & 0.8109 & 0.7093 & 0.9852  \\ 
+ 
+ $b_0$ & 0.3356 & 0.4956 & 0.1420 \\
+
+ $b_1$ & 0.7897 & 0.7268 & 0.8878 \\
+
+ Estimated variance of error term & $0.4193^2$ & $0.5367^2$ & $0.1049^2$ \\
+
+ p-value for test of $H_0:\beta_1=0$ & 0.0000 & 0.0000 & 0.0000\\
+ 
+ $95\%$ C.I for $b_1$ & $0.7360, 0.8434$ & $0.6393, 0.8144$ & $0.8640, 0.9115$\\
+ \hline
+\end{tabular}
+\end{center}
+
+*P-value outputs are very small, so for convenience, we use 0.0000 here.*
+\
+
+**Interpretation of $R^2$ values**\
+*Note: $R^2$ gives the percentage of variation in y's explained by *
+*regression line. $R^2$ is not resistant to outliers, and is *
+*affected by the spacing of X. A high $R^2$ does not indicate that the estimated *
+*regression line is a good fit. *\
+*General observation*: $R^2$ for the model of T neighborhood is smaller than the 
+$R^2$ for the model of all data, and $R^2$ for the model of M neighborhood is bigger 
+than the $R^2$ for the model of all data. \
+\
+As the scatterplot of T neighborhood shows, there are two data points 
+that are placed far away from the rest of the data. These points would be 
+considered as outliers and would have affected T neighborhood SLR model to have 
+a noticeably smaller $R^2$ value than the all data model. \
+Meanwhile, if we look at the scatterplot of M neighborhood, it is easy to tell that 
+M neighborhood has a high variation in X. This would have resulted in its SLR 
+model having a bigger $R^2$ value than the all data model. \
+
+
+### Can we use a pooled two-sample t-test for comparing the slopes?
+
+Among all the assumptions we are making when conducting a pooled two-sample 
+t-test, we can assume that both samples are simple random samples that are 
+normally distributed, as that is our assumption for the all data in the 
+previous SLR models. Also, we can say that the two samples are independent since 
+there is no relationship between the individuals in different samples.\
+\
+However, we cannot assume that the $y_i$'s from the two populations have the same 
+variance. If we want to use a pooled two sample t-test to determine 
+if there is a statistically significant difference between the slopes of the 
+two SLR models, we would first have to check for the equal variances. 
+
+
+
+
+## III. Discussions and Limitations
+
+Part 3 (.)
+### The best fitted model
+
+```{r, echo = FALSE, message=FALSE, out.width="40%", fig.align='center'}
+slr_M5302
+```
+
+I chose the sales price model of the Mississauga neighborhood as the best among our 
+three SLR models. Just by looking at the regression plot, there is no visibly 
+extreme outlier that would have affected the slope significantly.
+Also, the slope looks very similar to the trend of most of the points. Although 
+there are several big leverage points, none of them seem to be too influential 
+on the model. To statistically show this, we can simply check the top values of 
+Cook's distance:
+```{r, echo=FALSE}
+# showing top Cook's distances of the Mississauga model data points
+head(sort(cooks.distance(lM5302), decreasing = TRUE), n=5)
+```
+
+It turns out that there are 3 points whose Cook's distances are bigger 
+than 1, but it is not substantial. So compared to the other two models where there 
+are some noticeably influential points, this model seems to be the most valid 
+fit. More validity will be checked in the following section.\
+\
+
+### Checking normal error SLR assumptions
+
+Normal error SLR assumption is very important in determining the validity of a 
+model. Here are our two residual plots: 
+
+
+```{r, out.width="70%", message=FALSE, echo = FALSE, fig.align='center'}
+# plot square root of standard residual vs fitted values
+plot(lM5302, 3)
+title(main = "5302 Std.residuals vs Fitted value", 
+      cex.main = 2,col.main = "darkorchid3")
+```
+
+If there is a homoscedasticity in the variance of errors, we should see a 
+horizontal line with equally spread points. However, this is not the case in the 
+above plot. Our plot shows a generally inconsistent slope with a general upward trend of the 
+variances in the residual errors as fitted values increase, which suggests that 
+our model violates the homoscedasticity part of the SLR assumptions. 
+\
+\
+
+
+```{r, echo = FALSE, out.width="70%", fig.align='center', warning = FALSE}
+# plot qqplot to show normality of error terms
+qqnorm(residuals(lM5302), main="5302 Normal Q–Q plot of residuals")
+qqline(residuals(lM5302))
+```
+
+In addition, the plot above suggests that our residuals might not be so 
+normal. This plot is a normal QQ plot that visualizes the normality of data. 
+Regardless of some inconsistent values at each end of the plot, the general trend of the 
+points does not align well with the straight qqline. \
+\
+*In short*, there are some violations on the normal error SLR assumptions.\
+Although our models, including this Mississauga neighborhood model, 
+are not perfect as of now, we hope to improve our models in future studies. 
+
+### potential numeric predictors
+
+There could be many different potential predictors of the actual price at which a 
+house is sold. \
+\
+First, the age of a house could be an important factor in its price. Older homes 
+not only have outdated features, they are more likely to be in need of renovations. 
+Generally, since homes that are newer appraise at a higher value, there could 
+be a meaningful correlation between house sale price and age.\
+\
+Secondly, it is known that the size of a house is a critical factor in house price. 
+Depending on how many rooms there are and how many residents the house can accommodate, 
+the price could drastically change. In order to further investigate on how much 
+influence the size of a house has on its price, we are looking forward to 
+conducting a statistical analysis. 
+
+
+

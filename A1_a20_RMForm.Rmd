@@ -1,0 +1,183 @@
+---
+title: "Correlation between Forearm Length and Height"
+author: "CS5302 (.)"
+date: "September 26, 2020 (.)"
+output: pdf_document
+---
+
+## I. Introduction 
+
+Part 1 (.)
+
+Following statistical inference was conducted to learn about how a person's 
+forearm length is related to his/her height. Unit for both variables are fixed 
+as *centimeters (cm)*. \
+
+The sample data was collected from nine STA302 students in a randomly assigned 
+breakout group (group 5). Samples variate in gender 
+and ethnicity.\
+
+Here, **explanatory variable** is *forearm length*, and **response variable** 
+is *height*. Our goal explains the reason of variable choice: to predict a 
+person's height based on his/her forearm length. In real life, this model
+could be used to predict a person's height if they can only measure a forearm 
+length (short ruler).
+
+
+## II. Exploratory Data Analysis
+
+Part 2 (.)
+
+### Explanatory variable distribution 
+```{r, include = FALSE, out.width="50%"}
+library(tidyverse)
+```
+
+```{r, echo = FALSE, out.width="50%", fig.align='center'}
+height <- c(167, 180, 170, 183, 180, 155, 176, 168, 160)
+forearm <- c(24, 30, 26, 30, 30, 23, 28, 24, 23)
+f_to_h <- data.frame(forearm, height)
+
+ggplot(f_to_h, aes(x=forearm)) + ggtitle("5302 Histogram of Forearm Length (cm)")+
+  geom_histogram(binwidth = 1, fill = "darkorchid4")
+
+```
+```{r, include = FALSE}
+summary(f_to_h$forearm)
+```
+
+The explanatory variable (forearm length) is not at all normally distributed. 
+The distribution rather looks like the opposite of normal with two modes at
+each tail. Although the mean of 26.44 cm and the median of 26 cm tell us that 
+the distribution is quite centered, it is clear from the plot that it has two
+modes at two opposite ends. There is no observable outlier. 
+
+
+### Response variable distribution
+
+```{r, echo = FALSE, out.width="50%", fig.align='center'}
+ggplot(f_to_h, aes(x=height)) + ggtitle("5302 Histogram of Height (cm)")+
+  geom_histogram(binwidth = 2, fill = "khaki4")
+```
+```{r, include = FALSE}
+summary(f_to_h$height)
+```
+
+
+The response variable (height) is not normally distributed. Instead, with mean
+of 171 cm, median of 170 cm, and mode of 180 cm (with 2 data points), it is 
+closer to a uniform distribution than a normal distribution. It ranges from 155 
+cm to 183 cm with no noticeable outlier or skewness. 
+
+
+### Both explanatory and response variables
+
+```{r, echo = FALSE, out.width="70%", fig.align='center'}
+sp <- ggplot(f_to_h, aes(x=forearm, y=height)) + 
+  ggtitle("5302 Scatterplot of Forearm length vs. Height ") + geom_point(shape = 15)
+sp + geom_point() 
+```
+
+From the scatterplot above, it seems like there exists a positive linear 
+relationship between forearm length and height. To be more precise, in the next 
+part, we will conduct hypothesis testing and regression analysis on our sample 
+data. 
+
+
+## III. Methods and Model
+
+Part 3 (.)
+
+```{r, echo = FALSE,fig.align='center',out.width="70%"}
+sp2<- sp+ geom_point() + 
+  stat_smooth(method=lm, se = FALSE, colour = "navajowhite3")
+sp2
+```
+
+
+### Hypotheses 
+**$H_0$** = There is no linear relationship between forearm length and height. 
+($\beta_1=0$) \
+**$H_1$** = There is some linear relationship between forearm length and
+height. ($\beta_1\neq 0$)
+
+```{r, include = FALSE}
+lfit = lm(f_to_h$height ~ f_to_h$forearm)
+summary(lfit)
+```
+
+
+### Results
+
+After conducting linear regression analysis on the sample data, these are some
+of our numerical outputs: \
+\begin{center}
+\begin{tabular}{ |c|c| } 
+ \hline
+ Intercept($b_0$) & 92.94  \\ 
+ \hline
+ Slope($b_1$) & 2.95  \\
+ \hline
+ p-value of $b_0$ & 2.69e-05 \\
+ \hline
+ p-value of $b_1$ & 8.03e-05 \\
+ \hline
+\end{tabular}
+\end{center}
+
+Hence the **fitted line** is: 
+$$
+\hat{y} = 92.94 + 2.95x
+$$
+where $\hat{y}$ is the predicted height (cm) given x, forearm length (cm).\ 
+\
+
+### Conclusion
+
+With our significance level of 5%, since the p-value of our slope parameter 
+is very small and $b_1=2.95>0$, there is a 
+*very strong evidence against the null hypothesis*. \
+Thus, we conclude that it is very likely that the population parameter
+is not zero ($\beta_1\neq0$), meaning that there is a positive relationship 
+between a person's forearm length and height. \
+\
+The interpretation of $b_1$ is the change in height in cm when the 
+forearm length increases by 1 cm. That means for every 1cm increase in 
+forearm length, there is 2.95 cm of positive change in height.\
+The interpretation of $b_0$ is the estimated height in cm when the 
+forearm length is zero. In a mathematical context, $b_0=92.94$ indicates that 
+when one's forearm length is 0cm the height is predicted to be 92.94cm, but 
+in the context of human body, when one's forearm length is 0cm, then the height 
+should also be 0, or at least very close to 0. 
+
+
+## IV. Discussions and Limitations
+
+Part 4 (.)
+
+### Potential Lurking Variables and limitations
+Special types of physical activities could be a possible lurking variable. 
+Certain physical activities could help a human body develop with a slightly 
+different proportion of body parts, such as longer arms or longer legs. Also, 
+genetics could contribute on the shape and proportion of a body. \
+\
+It is hard to say that our sample data was unbiased.\
+First, the *race and gender distribution was unclear, and samples' age were not diverse*. 
+In fact, several 
+physiological studies has shown ethnic/ gender differences in body proportions. 
+When a person gets older, his/her height shrinks due to the transform of backbone, 
+but the forearm length changes less. 
+But until there is a strict cause and effect relationship proven, these remain 
+as a possible hypothesis.\
+In addition, *our number of sample data was not large enough* that the 
+randomness has big impact on our model. In the future, we could increase the
+size of data and fit a more reliable model. 
+
+### Another pair of variables
+
+In the future, it would be interesting to conduct a linear regression 
+analysis on the relationship between the number of university courses taking 
+at the same time versus one's happiness. \
+In this case, the number of university courses taking at the same time
+would be an independent variable, and the happiness index would be a response 
+variable. 
