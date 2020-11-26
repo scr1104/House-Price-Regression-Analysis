@@ -1,6 +1,4 @@
 # House-Price-Regression-Analysis
-
-
 This is a statistical analysis on house sale price in Toronto and Missisauga neighborhood. 
 
 1. "GTA_house_price_SLR": Simple Linear Regression Analysis on smaller house price data (project completed in 2020/11)
