@@ -1,13 +1,11 @@
 ---
 title: "Correlation between Forearm Length and Height"
-author: "CS5302 (.)"
-date: "September 26, 2020 (.)"
+author: "Chaerin Song"
+date: "September 26, 2020"
 output: pdf_document
 ---
 
 ## I. Introduction 
-
-Part 1 (.)
 
 Following statistical inference was conducted to learn about how a person's 
 forearm length is related to his/her height. Unit for both variables are fixed 
