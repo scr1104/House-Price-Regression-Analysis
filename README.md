@@ -3,8 +3,17 @@
 
 This is a statistical analysis on house sale price in Toronto and Missisauga neighborhood. 
 
-1. Simple Linear Regression without remedies (2020/10)
+1. Simple Linear Regression Analysis on smaller house price data(2020/11)
 
-2. Simple Linear Regression, thorough analysis (2020/11)
+2. Multiple Linear Regression, final analysis (2020/12)
 
-3. Multiple Linear Regression, final analysis (2020/12)
+
+<Data>
+House price data was obtained from the Toronto Real Estate Board (TREB) on detached houses in the city of Toronto and the city of Mississauga.
+  
+<Language>
+R, R markdown
+  
+  
+<Packages>
+tidyverse, cowplot, car
