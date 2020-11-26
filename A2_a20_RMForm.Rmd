@@ -1,7 +1,7 @@
 ---
-title: "Analysis on SLR Models for Sale Price of Detached Houses in the GTA (.)"
-author: "CS5302 (.)"
-date: "October 24, 2020 (.)"
+title: "Analysis on SLR Models for Sale Price of Detached Houses in the GTA"
+author: "Chaerin Song"
+date: "October 24, 2020"
 output:
   pdf_document: default
   html_document:
@@ -9,8 +9,6 @@ output:
 ---
 
 ## I. Exploratory Data Analysis
-
-Part 1 (.)\
 
 **Brief explanation of the data**: House price data was obtained from the
 Toronto Real Estate Board (TREB) on detached houses in the city of Toronto 
@@ -145,7 +143,6 @@ well aligned as the first scatterplot.
 
 ## II. Methods and Model
 
-Part 2 (.)
 
 ### 3 Simple linear regression models of sale price by list price
 
@@ -194,9 +191,6 @@ confint(lall5302, level = 0.95)
 confint(lT5302, level = 0.95)
 confint(lM5302, level = 0.95)
 ```
-
-
-Table (.)
 
 **Results**
 
@@ -259,7 +253,6 @@ two SLR models, we would first have to check for the equal variances.
 
 ## III. Discussions and Limitations
 
-Part 3 (.)
 ### The best fitted model
 
 ```{r, echo = FALSE, message=FALSE, out.width="40%", fig.align='center'}
