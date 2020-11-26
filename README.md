@@ -8,12 +8,15 @@ This is a statistical analysis on house sale price in Toronto and Missisauga nei
 2. Multiple Linear Regression, final analysis (project completed in 2020/12)
 
 
-<Data>
+**Data**
+
 House price data was obtained from the Toronto Real Estate Board (TREB) on detached houses in the city of Toronto and the city of Mississauga.
   
-<Language>
+**Language**
+
 R, R markdown
   
   
-<Packages>
+**Packages**
+
 tidyverse, cowplot, car
