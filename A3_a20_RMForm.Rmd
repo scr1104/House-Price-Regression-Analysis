@@ -1,0 +1,438 @@
+---
+title: "MLR Analysis on GTA House Price (.)"
+author: "Chaerin Song, Id 1005745302 (.)"
+date: "December 5, 2020 (.)"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+## I. Data Wrangling
+
+Part 1 (.)\
+
+*House price data was obtained from the*
+*Toronto Real Estate Board (TREB) on detached houses in the city of Toronto *
+*and the city of Mississauga.*
+
+```{r, include= FALSE}
+library(broom)
+library(tidyverse)
+library(cowplot)
+
+# Randomizing data
+set.seed(1005745302)
+
+# Reading the data
+csv5302 <- read.csv("real203.csv")
+house_data5302 <- sample_n(csv5302, size = 150)
+```
+
+### Selecting random 150 cases
+These are the sorted ID's of selected 150 samples.
+```{r, echo=FALSE}
+# Sorting and selecting only the ID's to display
+ID5302 <- house_data5302[,1]
+house_data5302<- house_data5302[order(house_data5302$ID),]
+house_data5302$ID
+```
+
+### Creating a new variable
+And we hereby transformed "lotwidth" and "lotlength" predictors into a new predictor "lotsize."
+Lotsize will be representing the size of the house in square feet.
+```{r, echo=FALSE}
+# create a new variable called lotsize by multiplying lotlnegth and lotwidth.
+house_data5302 <- house_data5302 %>% 
+  mutate(lotsize = lotwidth + lotlength)
+house_data5302 <- subset(house_data5302, select = -c(lotlength, lotwidth))
+head(house_data5302)
+```
+
+### Removing a predictor and (up to 11) cases
+
+We will remove "maxsqfoot" predictor from our data since it has too many NA values. 
+
+```{r, echo = FALSE}
+house_data5302 <- subset(house_data5302, select = -c(maxsqfoot))
+head(house_data5302, 3)
+```
+
+
+Now, we will remove every case that has at least one N/A value, 
+which counts to be 10 observations.
+```{r, echo = FALSE}
+print("Number of NA rows:")
+sum(!complete.cases(house_data5302))
+house_data5302 <- na.omit(house_data5302)
+```
+
+
+
+We can calculate leverage and Cook's distance for each point with a full numerical 
+additive model. \
+
+In fact, there are many points that exceed the threshold and are categorized as 
+leverage points, while there is no point with extremely high Cook's distance. 
+However, we can see that the case of index 106 has a noticeably higher Cook's distance 
+than other points; in addition, it also has the biggest hat value.\
+We could remove this case from our data.
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+numeric_data <- subset(house_data5302, select = -c(ID, location))
+attach(numeric_data)
+m_demo5302 <- lm(sale~list+bedroom+bathroom+parking+taxes+lotsize)
+pp1=length(coef(m_demo5302))
+threshold=2*(pp1)/length(sale)
+hii=hatvalues(m_demo5302)
+cooks<-cooks.distance(m_demo5302)
+
+print("Top 5 Cooks distance:")
+head(round(sort(cooks, decreasing=TRUE)[1:12], 3),5)
+print("Top 5 hat values that exceeds the threshold:")
+head(round(sort(hii, decreasing=TRUE)[1:12], 3),5)
+
+detach(numeric_data)
+```
+
+```{r, include = FALSE}
+house_data5302 <- house_data5302[-c(106), ]
+```
+
+
+## II. Exploratory Data Analysis
+Part 2 (.)\
+Table (.)
+
+### Variable Classification 
+
+**Type of Variables**
+\begin{center}
+\begin{tabular}{ |c|c| } 
+ \hline
+  Variable & Type   \\ 
+ \hline
+ \hline
+ sale & continuous \\
+ 
+ list & continuous \\ 
+ 
+ bedroom & discrete \\
+
+ bathroom & discrete \\
+ 
+ parking & discrete \\
+ 
+ taxes & continuous \\
+ 
+ lotsize & continuous \\
+ 
+ location & categorical \\
+ \hline
+\end{tabular}
+\end{center}
+
+### Pairwise Correlation and Scatterplot Matrix
+
+The following matrix plot demonstrates a pairwise correlation and scatterplot of two variables.
+Variables that are included are: *sale (response variable), list, bedroom, bathroom, parking, * *taxes, and lotsize. *
+
+The upper diagonal half of the panel demonstrates scatterplots of two corresponding variables, 
+and the lower half demonstrates pairwise correlation of these variables. 
+
+
+```{r, echo = FALSE}
+
+numeric_data <- subset(house_data5302, select = -c(ID, location))
+
+# Correlation panel
+panel.cor <- function(x, y){
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- round(cor(x, y, use = "complete.obs"), digits=2)
+    txt <- paste0("R = ", r)
+    cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt)
+}
+
+# Customize upper panel
+upper.panel<-function(x, y){
+  points(x,y, pch = 19)
+}
+# Create the plots
+pairs(numeric_data,
+      lower.panel = panel.cor,
+      upper.panel = upper.panel,
+      main = "Pairwise Correlation and Scatterplot Matrix 5302")
+
+```
+Based on the matrix above, we can rank each quantitative predictor based on their correlation coefficient with the sale variable. \
+Here is the summary:
+
+**Each Quantitative Predictor for Sale Price Rank (base on R value)**
+\begin{center}
+\begin{tabular}{ |c c|c| } 
+ \hline
+  Variable & Type & Cor.coeff  \\ 
+ \hline
+ \hline
+ 1 & list & R = 0.99 \\ 
+ 
+ 2 & taxes & R = 0.71 \\
+ 
+ 3 & bathroom & R = 0.63 \\
+  
+ 4 & bedroom & R = 0.47 \\
+
+ 5 & lotsize & R = 0.31 \\
+ 
+ 6 & parking & R = 0.08 \\
+
+ \hline
+\end{tabular}
+\end{center}
+
+Let's see if there is any multicollinearity between any two predictors. 
+Although there are some predictors that have a visibly positive linear relationship, 
+none of their pairwise correlation value indicates that they are strongly correlated. \
+
+Based on the scatterplot matrix, it seems like sale~taxes violates the homoscedasticity assumption the most. We shall check this by looking at the scale-location plot. 
+```{r, out.width="70%", message=FALSE, echo = FALSE, fig.align='center'}
+
+ST5302 = lm(house_data5302$sale ~ house_data5302$taxes)
+plot(ST5302, 3, main = "Scale-Location plot 5302")
+```
+Since the graph is far from being horizontal, we can confirm that taxes as a predictor of sale price strongly violates the assumption of constant variance. 
+
+## III. Methods and Model
+
+Part 3 (.)
+
+Table (.)
+
+### Fitting a full model
+
+Before we go ahead and fit an additive linear regression model, we shall 
+assign numerical values for location predictor, so that it will be an 
+indicator variable; 
+1 for T(Toronto), 0 for (Mississauga).
+```{r, echo = FALSE}
+# house_data5302[house_data5302$location == "T"] <- 1
+house_data5302$location <- recode(house_data5302$location, T = 1, M = 0)
+head(house_data5302)
+```
+
+Now we will fit an additive linear regression model for sale price, including our 
+recoded location variable.\ 
+Here is the summary of the model:
+
+```{r, message = FALSE, echo = FALSE}
+attach(house_data5302)
+m1_5302 <- lm(sale~list+bedroom+bathroom+parking+taxes+lotsize+location)
+summary(m1_5302)
+```
+
+Our fitted model is: \
+$\hat{y} = 79020 + 0.8333x_1 + 19900x_2 - 612.0x_3 -12030x_4 + 20.97x_5 -73.62x_6 + 82950 x_7$
+
+where each explanatory variable represents: \
+\
+$x_1$ = list price in CAD\
+$x_2$ = number of bedrooms\
+$x_3$ = number of bathrooms\
+$x_4$ = number of parking spots\
+$x_5$ = taxes in CAD\
+$x_6$ = lot size in square feet\
+$x_7$ = 1 for Toronto neighborhood, and 0 for Missisauga neighborhood.\
+\
+
+Our global F-test turned out to be significant with an extremely small p-value.\
+Now, let's look at the estimated regression coefficients and the 
+p-values for individual t-tests.
+
+
+**Full additive fitted model**
+\begin{center}
+\begin{tabular}{ |c|c c| } 
+ \hline
+  Predictor & Est. Coeff. & p-value  \\ 
+ \hline
+ \hline
+ list & 0.8333 & 0.0000 \\ 
+ 
+ bedroom & 19900. & 0.1924 \\
+ 
+ bathroom & - 612.0 & 0.9641 \\
+  
+ parking & -12030 & 0.1452 \\
+
+ taxes & 20.97 & 0.0000 \\
+ 
+ lotsize & -73.62 & 0.7838 \\
+ 
+ location & 82950. & 0.0285 \\
+
+ \hline
+\end{tabular}
+\end{center}
+
+
+With a benchmark significance level of 5%, list price, taxes, and location can 
+be used as factors to help predict the sale price 
+*over and above* other predictors. \
+Because our model's global F-test is significant and some of the t-tests are 
+significant, we can assume that there are some useful explanatory variables in 
+our model for predicting the sale price. 
+
+
+### Stepwise regression with AIC
+
+Now, we are going to use a stepwise regression with backward AIC from our 
+original model. 
+
+```{r, include = FALSE}
+AIC_5302 <- step(m1_5302, direction = "backward")
+summary(AIC_5302)
+```
+
+
+Our final model is: \
+$\hat{y} = 71150 + 0.8296x_1 + 19760x_2 - 12930x_3 + 20.68x_4 + 85090x_5$\
+where each explanatory variable represents: \
+\
+$x_1$ = list price in CAD\
+$x_2$ = number of bedrooms\
+$x_3$ = number of parking spots\
+$x_4$ = taxes in CAD\
+$x_5$ = 1 for Toronto neighborhood, and 0 for Mississauga neighborhood.\
+
+
+In this model, there are only 
+5 predictors used to predict the sale price: bedroom, parking, location, taxes, and list.\
+
+Below is the table demonstrating estimated regression coefficients and p-values 
+for these four predictors.
+
+**Fitted model using backward AIC**
+\begin{center}
+\begin{tabular}{ |c|c c| } 
+ \hline
+  Predictor & Est. Coeff. & p-value \\ 
+ \hline
+ \hline
+ list & 0.8296 & 0.0000 \\ 
+ 
+ bedroom & 19760. & 0.1584 \\
+ 
+ parking & - 12930. & 0.0846 \\
+
+ taxes & 20.68 & 0.0000 \\
+
+ location & 85090. & 0.0156 \\
+
+ \hline
+\end{tabular}
+\end{center}
+
+This model is not only different in the number of predictors from our original model, 
+but also in its common predictors’ estimated coefficients. \
+In short, the results are not consistent with our original (full) model. 
+
+
+
+### Stepwise regression with BIC
+
+Now, we will use BIC to repeat our what we did above. 
+
+```{r, include = FALSE}
+BIC_5302<- step(m1_5302, direction = "backward", k=log(141))
+summary(BIC_5302)
+```
+
+Our final model is: \
+$\hat{y} = 76440 + 0.8313x_1 + 21.21x_2 + 125000x_3$\
+where each explanatory variable represents: \
+\
+$x_1$ = list price in CAD\
+$x_2$ = taxes in CAD\
+$x_3$ = 1 for Toronto neighborhood, and 0 for Mississauga neighborhood.\
+\
+
+In this model, there are only 3 predictors used to predict the sale price: 
+location, taxes, and list.\
+
+Below is the table demonstrating estimated regression coefficients and p-values 
+for these four predictors.
+
+**Fitted model using backward BIC**
+\begin{center}
+\begin{tabular}{ |c|c c| } 
+ \hline
+  Predictor & Est. Coeff. & p-value \\ 
+ \hline
+ \hline
+ list & 0.8313 & 0.0000 \\ 
+ 
+ taxes & 21.21 & 0.0000 \\
+
+ location & 125000. & 0.0000 \\
+
+ \hline
+\end{tabular}
+\end{center}
+
+The results are not consistent with both our original (full) model and AIC model. 
+This model has the least predictors and the smallest individual t-test p-values. 
+Predictors' estimated coefficients are different from the previous two models 
+as well, although with AIC model they aren't numerically too different. \
+
+
+## IV. Discussions and Limitations
+
+Part 4 (.)
+
+Plot (.)
+
+### Check MLR assumptions
+
+Below are the 4 diagnostic plots for our BIC model. 
+```{r, echo = FALSE, fig.align= 'center'}
+par(mfrow = c(2, 2))
+plot(BIC_5302)
+mtext("4 Diagnostic Plots 5302", side = 3, line = -1.1, outer = TRUE, cex = 1.2,
+      col = "darkorchid3")
+```
+
+1. **Residuals vs Fitted**: We obtained a horizontal line without distinct 
+patterns, which is an indication for a linear relationship.\
+
+2. **Normal Q-Q**: Most of the residuals are normally distributed, as 
+they follow the straight dashed line. 
+However, some points with large absolute theoretical quantiles are far from 
+the dashed line, which indicates that the normal error MLR assumption is not 
+completely satisfied. \
+
+3. **Scale-Location**: Although there is a positive slope with the 
+smaller values of sale price and the points are not too equally spread, 
+there is a generally horizontal line. 
+We are mostly satisfying the homoscedasticity MLR assumption. \
+
+4. **Residuals vs Leverage**: There are some points with large absolute 
+standardized residuals, but none of the points' Cook's distance exceeds 1, 
+nor are any of them beyond the dashed lines. \
+
+
+### Towards our final model
+
+First, as shown in the scatterplot matrix in part (i), some of our explanatory 
+variables are not normally distributed. In the future, we could conduct a 
+Box-Cox transformation to transform these variables to be close to normally 
+distributed. \
+
+Right now, how much have we come to fit a valid model?\
+We drew scatterplots of the data and removed a bad influential point. 
+We are mostly satisfying our MLR assumptions, and we fit 3 different models to 
+end up with a model with 3 predictors, all statistically significant.\
+To better satisfy the homoscedasticity assumption, we could possibly use 
+the bootstrap for inference and refit the model. \
+
+
+
